@@ -11,25 +11,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collections;
 
 @Configuration
 public class SheetsRestConfig {
 
     @Bean
-    public HttpRequestFactory googleSheetsRequestFactory() throws IOException {
-        // Path to the secret file on Render
-        String credentialsPath = "/var/secrets/GOOGLE_CREDENTIALS_FILE";
+    public HttpRequestFactory googleSheetsRequestFactory() throws Exception {
+        // Path where Render mounts the secret file
+        String credentialsFilePath = "/etc/secrets/GOOGLE_CREDENTIALS_FILE";
 
-        // Load credentials from the file
-        GoogleCredentials credentials;
-        try (FileInputStream credentialsStream = new FileInputStream(credentialsPath)) {
-            credentials = GoogleCredentials.fromStream(credentialsStream)
-                    .createScoped(Collections.singletonList("https://www.googleapis.com/auth/spreadsheets"));
-        }
+        // Load credentials from file
+        InputStream credentialsStream = new FileInputStream(credentialsFilePath);
 
-        // Create HTTP request factory
+        GoogleCredentials credentials = GoogleCredentials.fromStream(credentialsStream)
+                .createScoped(Collections.singletonList("https://www.googleapis.com/auth/spreadsheets"));
+
         HttpTransport httpTransport = new NetHttpTransport();
         JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
 
