@@ -2,6 +2,7 @@ package com.kookee.merchandiser_backend.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -13,62 +14,70 @@ import java.util.*;
 public class GoogleSheetsWriter {
 
     private static final Logger logger = LoggerFactory.getLogger(GoogleSheetsWriter.class);
-    private static final String SHEET_API_URL = "https://sheet-api-gju6.onrender.com/report";
 
-    public void appendReport(String merchandiser, String outlet, String date, Map<String, Integer> itemsMap) {
+    @Value("${sheetapi.url}")
+    private String sheetApiUrl;
+
+    @SuppressWarnings("unchecked")
+    public void appendReport(String merchandiser, String outlet, String date, String notes, Map<String, Object> itemsMap) {
         if (itemsMap == null || itemsMap.isEmpty()) {
-            logger.warn("❗ Items map is empty or null. Skipping Google Sheets sync.");
+            logger.warn("Items map is empty or null. Skipping Google Sheets sync.");
             return;
         }
 
         try {
-            // Prepare the HTTP request
             RestTemplate restTemplate = new RestTemplate();
-            URL url = new URL(SHEET_API_URL);
+            URL url = new URL(sheetApiUrl);
 
-            // Build the items payload
             List<Map<String, Object>> itemsList = new ArrayList<>();
-            for (Map.Entry<String, Integer> entry : itemsMap.entrySet()) {
-                if (entry.getKey() == null || entry.getKey().isEmpty()) continue;
+
+            System.out.println("DEBUG (GoogleSheetsWriter): Processing items for Google Sheets API:");
+            for (Map.Entry<String, Object> entry : itemsMap.entrySet()) {
+                String itemName = entry.getKey();
+                Object itemValue = entry.getValue();
 
                 Map<String, Object> itemObj = new HashMap<>();
-                itemObj.put("name", entry.getKey());
-                itemObj.put("qty", entry.getValue() != null ? entry.getValue() : 0);
+                itemObj.put("name", itemName);
+
+                if (itemValue instanceof Map) {
+                    Map<String, Object> valueMap = (Map<String, Object>) itemValue;
+                    Object qtyVal = valueMap.getOrDefault("qty", 0);
+                    Object expiryVal = valueMap.getOrDefault("expiry", "");
+                    Object notesVal = valueMap.getOrDefault("notes", "");
+                    System.out.println(" - item: " + itemName + ", qty: " + qtyVal + ", expiry: " + expiryVal + ", notes: " + notesVal);
+
+                    itemObj.put("qty", qtyVal);
+                    itemObj.put("expiry", expiryVal);
+                    itemObj.put("notes", notesVal);
+                } else {
+                    System.out.println(" - item: " + itemName + ", qty (no map): " + itemValue);
+                    itemObj.put("qty", itemValue);
+                    itemObj.put("expiry", "");
+                    itemObj.put("notes", "");
+                }
+
                 itemsList.add(itemObj);
             }
 
-            if (itemsList.isEmpty()) {
-                logger.warn("⚠️ No valid items to send to Google Sheets. Aborting sync.");
-                return;
-            }
-
-            // Build the full report payload
             Map<String, Object> payload = new HashMap<>();
             payload.put("merchandiser", merchandiser);
             payload.put("outlet", outlet);
             payload.put("date", date);
+            payload.put("notes", notes);
             payload.put("items", itemsList);
 
-            // Set headers
+            System.out.println("DEBUG (GoogleSheetsWriter): Final payload sent to Google Sheets API: " + payload);
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // Build request
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
-
-            // POST request to sheet API
             ResponseEntity<String> response = restTemplate.postForEntity(url.toString(), request, String.class);
 
-            // Handle response
-            if (response.getStatusCode().is2xxSuccessful()) {
-                logger.info("✅ Successfully synced report to Google Sheets for {}", merchandiser);
-            } else {
-                logger.error("❌ Google Sheets sync returned non-2xx status: {}", response.getStatusCode());
-                logger.debug("Response body: {}", response.getBody());
-            }
+            logger.info("Google Sheets API response: status={}, body={}", response.getStatusCode(), response.getBody());
 
         } catch (Exception e) {
-            logger.error("❌ Exception during Google Sheets sync: {}", e.getMessage(), e);
+            logger.error("Failed to sync with Google Sheets: {}", e.getMessage(), e);
         }
     }
 }

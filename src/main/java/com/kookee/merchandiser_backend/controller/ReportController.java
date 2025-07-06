@@ -29,25 +29,37 @@ public class ReportController {
         this.googleSheetsWriter = googleSheetsWriter;
     }
 
-    // ✅ Save and Sync
     @PostMapping
     @Transactional
     public ResponseEntity<?> saveReport(@RequestBody Report report) {
         try {
             normalizeMerchandiser(report);
 
+            System.out.println("DEBUG: Received Report:");
+            System.out.println("merchandiser = " + report.getMerchandiser());
+            System.out.println("outlet = " + report.getOutlet());
+            System.out.println("date = " + report.getDate());
+            System.out.println("notes = " + report.getNotes());
+            System.out.println("Items:");
+            if (report.getItems() != null) {
+                for (Item i : report.getItems()) {
+                    System.out.println(" - name: " + i.getName() + ", qty: " + i.getQty() + ", expiry: " + i.getExpiry() + ", notes: " + i.getNotes());
+                }
+            }
+
             // Save to DB
             Report saved = reportRepository.save(report);
             System.out.println("✅ Saved report ID: " + saved.getId());
 
-            // Prepare items map
-            Map<String, Integer> itemsMap = buildItemsMap(saved.getItems());
+            // Prepare detailed items map
+            Map<String, Object> itemsMap = buildItemsMap(saved.getItems());
 
             // Sync to Google Sheets
             googleSheetsWriter.appendReport(
                 saved.getMerchandiser(),
                 saved.getOutlet(),
                 saved.getDate().toString(),
+                saved.getNotes(),
                 itemsMap
             );
 
@@ -59,20 +71,31 @@ public class ReportController {
         }
     }
 
-    // ✅ Sync Only
+    // Sync Only endpoint
     @PostMapping("/sync-single")
     public ResponseEntity<?> syncSingleReport(@RequestBody Report report) {
         try {
             normalizeMerchandiser(report);
 
-            // Prepare items map
-            Map<String, Integer> itemsMap = buildItemsMap(report.getItems());
+            System.out.println("DEBUG (sync-single): Received Report:");
+            System.out.println("merchandiser = " + report.getMerchandiser());
+            System.out.println("outlet = " + report.getOutlet());
+            System.out.println("date = " + report.getDate());
+            System.out.println("notes = " + report.getNotes());
+            System.out.println("Items:");
+            if (report.getItems() != null) {
+                for (Item i : report.getItems()) {
+                    System.out.println(" - name: " + i.getName() + ", qty: " + i.getQty() + ", expiry: " + i.getExpiry() + ", notes: " + i.getNotes());
+                }
+            }
 
-            // Sync to Google Sheets
+            Map<String, Object> itemsMap = buildItemsMap(report.getItems());
+
             googleSheetsWriter.appendReport(
                 report.getMerchandiser(),
                 report.getOutlet(),
                 report.getDate().toString(),
+                report.getNotes(),
                 itemsMap
             );
 
@@ -84,14 +107,12 @@ public class ReportController {
         }
     }
 
-    // ✅ Fetch all reports
     @GetMapping
     @Transactional(readOnly = true)
     public List<Report> getAllReports() {
         return reportRepository.findAll();
     }
 
-    // Helpers
     private void normalizeMerchandiser(Report report) {
         if (report.getMerchandiser() != null && !report.getMerchandiser().isEmpty()) {
             String cleaned = report.getMerchandiser().substring(0, 1).toUpperCase()
@@ -100,11 +121,16 @@ public class ReportController {
         }
     }
 
-    private Map<String, Integer> buildItemsMap(List<Item> items) {
-        Map<String, Integer> map = new LinkedHashMap<>();
+    private Map<String, Object> buildItemsMap(List<Item> items) {
+        Map<String, Object> map = new LinkedHashMap<>();
         if (items != null) {
             for (Item i : items) {
-                map.put(i.getName(), i.getQty());
+                System.out.println("DEBUG (buildItemsMap): Adding item to map: name=" + i.getName() + ", qty=" + i.getQty() + ", expiry=" + i.getExpiry() + ", notes=" + i.getNotes());
+                Map<String, Object> itemDetails = new HashMap<>();
+                itemDetails.put("qty", i.getQty());
+                itemDetails.put("expiry", i.getExpiry());
+                itemDetails.put("notes", i.getNotes());
+                map.put(i.getName(), itemDetails);
             }
         }
         return map;
