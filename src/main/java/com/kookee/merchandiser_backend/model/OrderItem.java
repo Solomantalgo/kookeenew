@@ -3,6 +3,7 @@ package com.kookee.merchandiser_backend.model;
 import jakarta.persistence.*;
 
 @Entity
+@Table(name = "order_item") // Explicitly name the table to avoid naming issues
 public class OrderItem {
 
     @Id
@@ -14,11 +15,31 @@ public class OrderItem {
     private String expiry;
 
     // Getters and Setters
-    public Long getId() { return id; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public int getQty() { return qty; }
-    public void setQty(int qty) { this.qty = qty; }
-    public String getExpiry() { return expiry; }
-    public void setExpiry(String expiry) { this.expiry = expiry; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getQty() {
+        return qty;
+    }
+
+    public void setQty(int qty) {
+        this.qty = qty;
+    }
+
+    public String getExpiry() {
+        return expiry;
+    }
+
+    public void setExpiry(String expiry) {
+        this.expiry = expiry;
+    }
 }

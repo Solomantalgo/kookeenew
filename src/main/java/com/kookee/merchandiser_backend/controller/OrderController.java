@@ -13,7 +13,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/orders")
-@CrossOrigin(origins = "*")
+// Remove this line to avoid conflict with global CorsConfig
+// @CrossOrigin(origins = "*") 
 public class OrderController {
 
     private static final Logger log = LoggerFactory.getLogger(OrderController.class);
@@ -33,8 +34,7 @@ public class OrderController {
             return ResponseEntity.ok(savedOrder);
         } catch (Exception e) {
             log.error("Failed to save order", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 

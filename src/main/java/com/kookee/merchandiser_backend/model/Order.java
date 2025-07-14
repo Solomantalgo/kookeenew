@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Entity
+@Table(name = "orders") // ✅ Use plural to avoid conflict with reserved word
 public class Order {
 
     @Id
